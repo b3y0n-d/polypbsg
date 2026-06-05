@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+  <meta name="description" content="BSG/ACPGBI post-polypectomy surveillance calculator. Implements BSG 2020 surveillance guidelines and BSG/ACPGBI 2025 limited life expectancy guidance. For UK healthcare professionals."/>
+  <meta name="theme-color" content="#155e75"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <title>BSG Polyp Surveillance</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>html,body{margin:0;padding:0;background:#f0f6fa}#root{min-height:100vh}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const{useState,useRef,useEffect}=React;
+
+const T={bg:"#f0f6fa",surface:"#ffffff",border:"#dae5ed",primary:"#0e7490",dk:"#155e75",lt:"#ecfeff",text:"#0f172a",mid:"#4a6070",muted:"#8fa4b0",red:"#b91c1c",redBg:"#fef2f2",green:"#15803d",greenBg:"#f0fdf4",amber:"#92400e",amberBg:"#fffbeb",blue:"#1d4ed8",blueBg:"#eff6ff"};
+
+function GlobalStyle(){return(<style>{`
+  *,*::before,*::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  button{touch-action:manipulation;-webkit-touch-callout:none;cursor:pointer}
+  input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  input[type=number],input[type=text]{-moz-appearance:textfield}
+  input{-webkit-user-select:text;user-select:text}
+  input[type=range]{-webkit-appearance:none;height:4px;border-radius:2px;outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:11px;background:#0e7490;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+  input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:11px;background:#0e7490;border:2px solid #fff}
+  @media(hover:hover){.yn-btn:hover{filter:brightness(.95)}.calc-btn:not(:disabled):hover{filter:brightness(1.08)}}
+  a.ref-link:hover{filter:brightness(.92)}
+`}</style>);}
+
+const css={
+  app:{background:T.bg,minHeight:"100vh",maxWidth:580,margin:"0 auto",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"},
+  stickyNav:{position:"sticky",top:0,zIndex:100},
+  header:{background:T.dk,padding:"14px 18px 12px",borderBottom:`3px solid ${T.primary}`},
+  tabBar:{display:"flex",background:T.dk,overflowX:"auto",WebkitOverflowScrolling:"touch"},
+  content:{padding:"14px 13px",paddingBottom:"calc(32px + env(safe-area-inset-bottom,0px))"},
+  card:{background:T.surface,borderRadius:14,border:`1px solid ${T.border}`,padding:"14px 15px",marginBottom:10},
+  secLabel:{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1.2,color:T.mid,marginBottom:10},
+  q:{fontSize:14,fontWeight:600,color:T.text,lineHeight:1.4},
+  hint:{fontSize:12,color:T.mid,lineHeight:1.4,marginTop:3,marginBottom:6},
+  divider:{borderTop:`1px solid ${T.border}`,margin:"12px 0"},
+  disc:{fontSize:11,color:T.muted,textAlign:"center",marginTop:10,lineHeight:1.5,padding:"0 8px"},
+};
+
+function GuidelineRef({imgSrc,imgAlt,title,subtitle,links}){
+  const[imgErr,setImgErr]=useState(false);
+  const primaryUrl=links[0]?.url;
+  return(
+    <div style={{marginTop:18,marginBottom:4}}>
+      <div style={{...css.secLabel,marginBottom:8}}>📄 Cross-check source guideline</div>
+      <div style={{background:T.surface,borderRadius:14,border:`1px solid ${T.border}`,overflow:"hidden"}}>
+        {imgSrc&&!imgErr?(
+          <a href={primaryUrl} target="_blank" rel="noopener noreferrer" style={{display:"block"}}>
+            <img src={imgSrc} alt={imgAlt} onError={()=>setImgErr(true)}
+              style={{width:"100%",display:"block",maxHeight:260,objectFit:"contain",objectPosition:"top",background:"#f4f8fb",borderBottom:`1px solid ${T.border}`}}/>
+          </a>
+        ):(
+          <a href={primaryUrl} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:16,padding:"22px 18px",background:"linear-gradient(135deg,#f0f6fa,#e8f4f8)",borderBottom:`1px solid ${T.border}`,textDecoration:"none"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"center",width:56,height:68,background:"#fff",borderRadius:8,border:`1px solid ${T.border}`,boxShadow:"0 2px 6px rgba(0,0,0,.08)",flexShrink:0,position:"relative"}}>
+              <span style={{fontSize:26}}>📋</span>
+              <div style={{position:"absolute",bottom:5,left:0,right:0,textAlign:"center",fontSize:8,fontWeight:800,color:T.red,letterSpacing:.5}}>PDF</div>
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:700,fontSize:13,color:T.primary,lineHeight:1.35,marginBottom:3}}>{imgAlt||title}</div>
+              <div style={{fontSize:12,color:T.mid}}>Tap to open guideline →</div>
+            </div>
+          </a>
+        )}
+        <div style={{padding:"13px 14px"}}>
+          <div style={{fontWeight:700,fontSize:13,color:T.text,marginBottom:2,lineHeight:1.35}}>{title}</div>
+          <div style={{fontSize:11.5,color:T.mid,marginBottom:12,lineHeight:1.4}}>{subtitle}</div>
+          <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+            {links.map(({label,url},i)=>(
+              <a key={i} className="ref-link" href={url} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",minHeight:40,padding:"0 14px",background:i===0?T.dk:T.surface,color:i===0?"#fff":T.primary,border:`1.5px solid ${i===0?T.dk:T.border}`,borderRadius:9,fontSize:12.5,fontWeight:600,textDecoration:"none",whiteSpace:"nowrap"}}>{label}</a>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );}
+
+const REF_BSG2020=(
+  <GuidelineRef
+    imgSrc="https://www.bsg.org.uk/getattachment/bd6fa1ef-835a-449c-8fbc-977354a44f98/Figure-1-surveillance-algorithm-1-scaled.jpeg?lang=en-US"
+    imgAlt="BSG 2020 Post-polypectomy Surveillance Algorithm — Figure 1"
+    title="BSG/ACPGBI/PHE Post-polypectomy Surveillance Guidelines"
+    subtitle="Rutter MD, East J, Rees CJ, et al. Gut 2020;69:201–223"
+    links={[
+      {label:"📥 Recommendations PDF",url:"https://www.bsg.org.uk/getattachment/d85e8c17-fa8e-46a6-803a-58b898167cd9/NICE-list-of-recommendations-from-BSG-Post-polypectomy-and-post-colorectal-cancer-resection-surveillance-guidelines-(1).pdf"},
+      {label:"🌐 BSG Page",url:"https://www.bsg.org.uk/clinical-resource/list-of-recommendations"},
+      {label:"📖 Gut 2020",url:"https://gut.bmj.com/content/69/2/201"},
+    ]}/>);
+
+const REF_BSG2025=(
+  <GuidelineRef
+    imgAlt="BSG/ACPGBI 2025 — Colorectal Polyps in Limited Life Expectancy"
+    title="BSG/ACPGBI 2025 — Colorectal Polyps in Patients with Limited Life Expectancy"
+    subtitle="Rutter MD, Ranjan R, Westwood C, et al. Gut 2025 doi:10.1136/gutjnl-2025-335047"
+    links={[
+      {label:"📥 Full Guidance PDF",url:"https://www.bsg.org.uk/getmedia/8231895c-65ff-437a-8f1f-8480e798f82a/Polyps-Limited-Life-Expectancy-gutjnl-2025-335047.pdf"},
+    ]}/>);
+
+function InfoBtn({tip}){
+  const[open,setOpen]=useState(false);
+  return(<span style={{display:"inline-block",verticalAlign:"middle"}}>
+    <button onClick={e=>{e.stopPropagation();setOpen(o=>!o)}} style={{display:"inline-flex",alignItems:"center",justifyContent:"center",minWidth:44,minHeight:44,background:"none",border:"none",padding:"0 4px"}}>
+      <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:18,height:18,border:`1px solid ${T.border}`,borderRadius:9,background:T.lt,fontSize:10,fontWeight:700,color:T.primary}}>?</span>
+    </button>
+    {open&&<div style={{marginTop:4,padding:"10px 13px",background:T.lt,border:`1px solid ${T.primary}40`,borderRadius:10,fontSize:12.5,color:T.text,lineHeight:1.55}}>
+      {tip}<button onClick={()=>setOpen(false)} style={{float:"right",background:"none",border:"none",fontSize:18,color:T.mid,marginLeft:8,minWidth:44,minHeight:44,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>×</button>
+    </div>}
+  </span>);}
+
+function CopyBtn({text}){
+  const[ok,setOk]=useState(false);
+  return(<button onClick={()=>{try{navigator.clipboard.writeText(text)}catch{}setOk(true);setTimeout(()=>setOk(false),2000)}} style={{minHeight:44,padding:"0 14px",background:"rgba(255,255,255,.65)",border:"none",borderRadius:8,fontSize:12,fontWeight:600,color:T.mid,display:"inline-flex",alignItems:"center",gap:4}}>{ok?"✓ Copied":"📋 Copy"}</button>);}
+
+function TabBtn({id,label,icon,active,onClick}){
+  return(<button onClick={()=>onClick(id)} style={{flex:"0 0 auto",minWidth:60,minHeight:52,padding:"8px 5px",background:active?T.surface:"transparent",color:active?T.dk:"rgba(255,255,255,.72)",border:"none",fontSize:9,fontWeight:700,letterSpacing:.3,textTransform:"uppercase",borderBottom:active?`2px solid ${T.primary}`:"2px solid transparent",lineHeight:1.3,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+    <span style={{fontSize:17,marginBottom:2}}>{icon}</span>{label}
+  </button>);}
+
+function YN({q,val,set,hint}){
+  return(<div style={{marginBottom:13}}>
+    <div style={{...css.q,marginBottom:hint?3:8}}>{q}</div>
+    {hint&&<div style={css.hint}>{hint}</div>}
+    <div style={{display:"flex",gap:8}}>
+      {[["Yes",true],["No",false]].map(([l,v])=>(
+        <button key={l} className="yn-btn" onClick={()=>set(val===v?null:v)} style={{flex:1,minHeight:48,padding:"10px 0",borderRadius:10,border:`1.5px solid ${val===v?T.primary:T.border}`,background:val===v?T.primary:T.surface,color:val===v?"#fff":T.mid,fontSize:15,fontWeight:600}}>{l}</button>
+      ))}
+    </div>
+  </div>);}
+
+function AgeSel({val,set}){
+  const[txt,setTxt]=useState(String(val));
+  useEffect(()=>setTxt(String(val)),[val]);
+  const warn=val>=75,pct=((val-18)/(90-18))*100,tc=warn?T.amber:T.primary;
+  return(<div style={{marginBottom:13}}>
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+      <span style={{...css.q,flex:1}}>Patient age</span>
+      <div style={{display:"flex",alignItems:"center",gap:6}}>
+        <input type="text" inputMode="numeric" pattern="[0-9]*" value={txt}
+          onChange={e=>{const r=e.target.value.replace(/\D/g,"");setTxt(r);const n=parseInt(r);if(!isNaN(n)&&n>=18&&n<=90)set(n)}}
+          onBlur={()=>setTxt(String(val))}
+          style={{width:68,padding:"6px 8px",textAlign:"center",border:`2px solid ${tc}`,borderRadius:10,fontSize:22,fontWeight:800,color:tc,outline:"none",background:warn?"#fffbeb":T.lt}}/>
+        <span style={{fontSize:13,color:T.mid,fontWeight:500}}>yrs</span>
+      </div>
+    </div>
+    <input type="range" min={18} max={90} value={val}
+      onChange={e=>{const n=+e.target.value;set(n);setTxt(String(n))}}
+      style={{width:"100%",background:`linear-gradient(to right,${tc} ${pct}%,#dae5ed ${pct}%)`,borderRadius:2,cursor:"pointer"}}/>
+    <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginTop:4}}>
+      <span style={{color:T.muted}}>18</span>
+      {warn&&<span style={{color:T.amber,fontWeight:700,fontSize:11}}>⚠️ Age caveat applies</span>}
+      <span style={{color:T.muted}}>90</span>
+    </div>
+  </div>);}
+
+function Ctr({label,val,set,hint}){
+  return(<div style={{marginBottom:13}}>
+    <div style={{...css.q,marginBottom:hint?2:8}}>{label}</div>
+    {hint&&<div style={css.hint}>{hint}</div>}
+    <div style={{display:"flex",alignItems:"center",gap:10,marginTop:6}}>
+      <button onClick={()=>set(Math.max(0,val-1))} style={{width:48,height:48,flexShrink:0,border:`1.5px solid ${T.border}`,borderRadius:10,background:T.surface,fontSize:24,fontWeight:700,color:val>0?T.primary:T.muted}}>−</button>
+      <input type="text" inputMode="numeric" pattern="[0-9]*" value={val} maxLength={2}
+        onChange={e=>{const n=parseInt(e.target.value);if(!isNaN(n)&&n>=0&&n<=20)set(n);else if(e.target.value==="")set(0)}}
+        style={{flex:1,textAlign:"center",padding:"8px 0",border:`1.5px solid ${T.border}`,borderRadius:10,fontSize:28,fontWeight:800,color:T.primary,outline:"none",background:T.surface}}/>
+      <button onClick={()=>set(Math.min(20,val+1))} style={{width:48,height:48,flexShrink:0,border:`1.5px solid ${T.border}`,borderRadius:10,background:T.surface,fontSize:24,fontWeight:700,color:val<20?T.primary:T.muted}}>+</button>
+    </div>
+  </div>);}
+
+const ADV=[{id:"a10",label:"Adenoma ≥10mm"},{id:"hgd",label:"Adenoma with high-grade dysplasia"},{id:"s10",label:"Serrated polyp ≥10mm"},{id:"sdys",label:"Serrated polyp with any dysplasia"}];
+function AdvPoly({val,set}){
+  const isNone=val==="none",ids=Array.isArray(val)?val:[];
+  const toggle=id=>set(prev=>{if(prev==="none")return[id];const arr=Array.isArray(prev)?prev:[];const next=arr.includes(id)?arr.filter(x=>x!==id):[...arr,id];return next.length?next:"none"});
+  return(<div>
+    <div style={{fontSize:12.5,fontWeight:600,color:T.mid,marginBottom:10}}>Advanced polyp features? <em style={{fontWeight:400}}>Select all that apply</em></div>
+    <div style={{display:"grid",gap:7}}>
+      {ADV.map(({id,label})=>{const ch=ids.includes(id);return(
+        <button key={id} onClick={()=>!isNone&&toggle(id)} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 13px",minHeight:48,border:`1.5px solid ${ch?T.primary:T.border}`,borderRadius:10,background:ch?T.lt:T.surface,opacity:isNone?.3:1,textAlign:"left",width:"100%"}}>
+          <span style={{display:"flex",width:20,height:20,flexShrink:0,border:`1.5px solid ${ch?T.primary:"#b0c4d0"}`,borderRadius:5,background:ch?T.primary:T.surface,alignItems:"center",justifyContent:"center"}}>{ch&&<span style={{color:"#fff",fontSize:12,fontWeight:700}}>✓</span>}</span>
+          <span style={{fontSize:14,color:T.text}}>{label}</span>
+        </button>);})}
+      <button onClick={()=>set("none")} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 13px",minHeight:48,border:`1.5px solid ${isNone?T.primary:T.border}`,borderRadius:10,background:isNone?T.lt:T.surface,textAlign:"left",width:"100%",marginTop:2}}>
+        <span style={{display:"flex",width:20,height:20,flexShrink:0,border:`1.5px solid ${isNone?T.primary:"#b0c4d0"}`,borderRadius:5,background:isNone?T.primary:T.surface,alignItems:"center",justifyContent:"center"}}>{isNone&&<span style={{color:"#fff",fontSize:12,fontWeight:700}}>✓</span>}</span>
+        <span style={{fontSize:14,fontWeight:600,color:T.text}}>None of the above</span>
+      </button>
+    </div>
+  </div>);}
+
+function Res({color,bg,icon,title,body,notes,recs}){
+  const cp=`${title}\n${body}${notes?"\n"+notes.join("\n"):""}${recs?.length?"\n"+recs.join(" · "):""}`;
+  return(<div style={{background:bg,border:`1.5px solid ${color}`,borderRadius:14,padding:16,marginTop:10}}>
+    <div style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:9}}>
+      <span style={{fontSize:26,lineHeight:1,flexShrink:0}}>{icon}</span>
+      <div style={{fontWeight:800,fontSize:15,color,lineHeight:1.3}}>{title}</div>
+    </div>
+    <div style={{fontSize:13.5,color:T.text,lineHeight:1.65}}>{body}</div>
+    {notes?.map((n,i)=><div key={i} style={{marginTop:8,padding:"8px 11px",background:"rgba(255,255,255,.75)",borderRadius:8,fontSize:13,color:T.text,lineHeight:1.5,borderLeft:`3px solid ${color}`}}>{n}</div>)}
+    <div style={{marginTop:10,display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:8,borderTop:`1px solid ${color}40`}}>
+      {recs?.length>0?<div style={{fontSize:11.5,color:T.mid,flex:1,marginRight:8}}>{recs.join(" · ")}</div>:<div/>}
+      <CopyBtn text={cp}/>
+    </div>
+  </div>);}
+
+function CalcBtn({onClick,disabled}){return(<button className="calc-btn" onClick={onClick} disabled={disabled} style={{width:"100%",minHeight:52,padding:"12px 0",marginTop:4,marginBottom:4,background:disabled?T.border:T.dk,color:disabled?T.muted:"#fff",border:"none",borderRadius:12,fontSize:16,fontWeight:700}}>{disabled?"Complete all fields above":"Get recommendation →"}</button>);}
+function ResetBtn({onClick}){return(<button onClick={onClick} style={{width:"100%",marginTop:7,minHeight:48,padding:"10px 0",background:T.surface,color:T.primary,border:`1.5px solid ${T.border}`,borderRadius:12,fontSize:14,fontWeight:600}}>↺ Reset</button>);}
+
+const CCI_GROUPS=[
+  {score:1,items:[{id:"mi",label:"Myocardial infarction"},{id:"chf",label:"Congestive heart failure"},{id:"pvd",label:"Peripheral vascular disease"},{id:"cvd",label:"Cerebrovascular disease (stroke / TIA)"},{id:"dem",label:"Dementia"},{id:"copd",label:"Chronic pulmonary disease"},{id:"ctd",label:"Connective tissue / rheumatic disease"},{id:"pud",label:"Peptic ulcer disease"},{id:"ld1",label:"Mild liver disease (no portal hypertension)"},{id:"dm1",label:"Diabetes mellitus — uncomplicated"}]},
+  {score:2,items:[{id:"dm2",label:"Diabetes with end-organ damage"},{id:"hemi",label:"Hemiplegia or paraplegia"},{id:"renal",label:"Moderate/severe renal disease (eGFR <30 or dialysis)"},{id:"tumor",label:"Solid tumour — non-metastatic, diagnosed ≤5 years"},{id:"leuk",label:"Leukaemia"},{id:"lymp",label:"Lymphoma"}]},
+  {score:3,items:[{id:"ld3",label:"Moderate/severe liver disease (portal HTN, varices, encephalopathy)"}]},
+  {score:6,items:[{id:"met",label:"Metastatic solid tumour"},{id:"aids",label:"AIDS"}]},
+];
+const ALL_CCI=CCI_GROUPS.flatMap(g=>g.items.map(i=>({...i,score:g.score})));
+
+function CCISelector({val,set}){
+  const[open,setOpen]=useState(false);
+  const score=ALL_CCI.filter(i=>val.includes(i.id)).reduce((s,i)=>s+i.score,0);
+  const toggle=id=>set(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id]);
+  const sc=score>=3?T.red:score>=1?T.amber:T.green;
+  const sl=score>=3?`Significant comorbidity — CCI ${score}`:score>=1?`Mild comorbidity — CCI ${score}`:"No significant comorbidity — CCI 0";
+  return(<div>
+    <button onClick={()=>setOpen(o=>!o)} style={{width:"100%",background:"none",border:"none",display:"flex",justifyContent:"space-between",alignItems:"center",padding:0,minHeight:52,gap:10}}>
+      <div style={{textAlign:"left",flex:1}}>
+        <div style={css.q}>Charlson Comorbidity Index (CCI)</div>
+        <div style={{fontSize:12,color:sc,fontWeight:600,marginTop:3}}>{sl}</div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+        <div style={{minWidth:46,padding:"5px 10px",background:sc+"18",border:`2px solid ${sc}`,borderRadius:10,fontSize:20,fontWeight:800,color:sc,textAlign:"center"}}>{score}</div>
+        <span style={{fontSize:13,color:T.mid}}>{open?"▲":"▼"}</span>
+      </div>
+    </button>
+    {open&&<div style={{marginTop:10}}>
+      {CCI_GROUPS.map(g=>(
+        <div key={g.score} style={{marginBottom:12}}>
+          <div style={{fontSize:10.5,fontWeight:700,color:T.mid,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>+{g.score} point{g.score>1?"s":""} each</div>
+          <div style={{display:"grid",gap:6}}>
+            {g.items.map(item=>{const ch=val.includes(item.id);return(
+              <button key={item.id} onClick={()=>toggle(item.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",minHeight:44,border:`1.5px solid ${ch?T.primary:T.border}`,borderRadius:10,background:ch?T.lt:T.surface,textAlign:"left",width:"100%"}}>
+                <span style={{display:"flex",width:20,height:20,flexShrink:0,border:`1.5px solid ${ch?T.primary:"#b0c4d0"}`,borderRadius:5,background:ch?T.primary:T.surface,alignItems:"center",justifyContent:"center"}}>{ch&&<span style={{color:"#fff",fontSize:12,fontWeight:700}}>✓</span>}</span>
+                <span style={{fontSize:13.5,color:T.text,flex:1}}>{item.label}</span>
+                <span style={{fontSize:11,fontWeight:700,color:ch?T.primary:T.muted,flexShrink:0}}>+{g.score}</span>
+              </button>);})}
+          </div>
+        </div>))}
+      <button onClick={()=>set([])} style={{width:"100%",minHeight:40,background:"none",border:`1px dashed ${T.border}`,borderRadius:10,fontSize:12.5,color:T.mid,fontWeight:600,marginTop:4}}>Clear all</button>
+    </div>}
+  </div>);}
+
+const SZ_OPTS=["1–5mm","6–9mm","10–19mm","≥20mm"];
+const AE_NONE=[10,15,25,45];
+const AE_ANTI=[30,45,75,135];
+const CANCER={3:[[7,8],[37,9],[117,9],[349,11]],4:[[5,7],[25,7],[81,7],[256,8]],5:[[3,5],[13,5],[41,5],[161,6]],6:[[1,4],[6,4],[19,4],[56,4]],7:[[0,3],[0,3],[0,3],[0,3]]};
+const getRag=(ae,c)=>{if(c===0)return"red";if(c/ae>=1.25)return"green";if(ae/c>=1.25)return"red";return"amber"};
+const getCCIBucket=s=>s<3?null:s>=7?7:s;
+
+function LLEResult({cciBucket,sz,anti}){
+  const ae=anti?AE_ANTI[sz]:AE_NONE[sz];
+  const[c,cy]=CANCER[cciBucket][sz];
+  const rag=getRag(ae,c);
+  const rc=rag==="green"?T.green:rag==="amber"?T.amber:T.red;
+  const rb=rag==="green"?T.greenBg:rag==="amber"?T.amberBg:T.redBg;
+  const icon=rag==="green"?"🟢":rag==="amber"?"🟡":"🔴";
+  const title=rag==="green"?"Favour resection":rag==="amber"?"Marginal — individualised decision":"Favour conservative management";
+  const cciLbl=cciBucket===7?"≥7":String(cciBucket);
+  const body=rag==="green"
+    ?`For CCI ${cciLbl} with a ${SZ_OPTS[sz]} polyp: polypectomy adverse events (~${ae}/1000) are substantially outweighed by estimated cancer risk from conservative management (~${c}/1000 by ${cy} years). Resection is favoured.`
+    :c===0
+    ?`For CCI ${cciLbl}: near-zero cancer risk within remaining life expectancy. Polypectomy adverse events (~${ae}/1000) outweigh any potential cancer prevention benefit. Conservative management is favoured for all polyp sizes.`
+    :rag==="red"
+    ?`For CCI ${cciLbl} with a ${SZ_OPTS[sz]} polyp: polypectomy adverse events (~${ae}/1000) substantially exceed estimated cancer risk from conservative management (~${c}/1000 by ${cy} years). Conservative management is favoured.`
+    :`For CCI ${cciLbl} with a ${SZ_OPTS[sz]} polyp: polypectomy adverse events (~${ae}/1000) and cancer risk from conservative management (~${c}/1000 by ${cy} years) are closely matched. Individualised shared decision-making required.`;
+  return(<Res color={rc} bg={rb} icon={icon} title={title} body={body}
+    notes={[`Polypectomy AE: ~${ae} per 1000 patients${anti?" (on antithrombotic)":""}`,c===0?`Cancer if untreated: near-zero within remaining life expectancy`:`Cancer if untreated: ~${c} per 1000 patients by ${cy} years`,"AE = significant complications requiring medical attention.","All figures are modelled estimates. Use as basis for shared decision-making."]}
+    recs={[`CCI ${cciLbl}`,SZ_OPTS[sz],anti?"Antithrombotic":"No antithrombotic","BSG/ACPGBI Gut 2025"]}/>);}
+
+function LLETable1(){
+  const ROWS=[
+    {lbl:"CCI 3", c:["7C@8y","37C@9y","117C@9y","349C@11y"]},
+    {lbl:"CCI 4", c:["5C@7y","25C@7y","81C@7y","256C@8y"]},
+    {lbl:"CCI 5", c:["3C@5y","13C@5y","41C@5y","161C@6y"]},
+    {lbl:"CCI 6", c:["1C@4y","6C@4y","19C@4y","56C@4y"]},
+    {lbl:"CCI ≥7",c:["0C@3y","0C@3y","0C@3y","0C@3y"]},
+  ];
+  const RN=[["R","G","G","G"],["R","G","G","G"],["R","A","G","G"],["R","R","R","A"],["R","R","R","R"]];
+  const RA=[["R","A","G","G"],["R","R","A","G"],["R","R","R","A"],["R","R","R","R"],["R","R","R","R"]];
+  const bg=r=>r==="G"?"#22a34a":r==="A"?"#d97706":"#dc2626";
+  const BD=`1px solid ${T.border}`;
+  const TH={padding:"4px 5px",textAlign:"center",fontSize:9.5,fontWeight:700,lineHeight:1.3,whiteSpace:"nowrap"};
+  const SZ=["1–5mm","6–9mm","10–19mm","≥20mm"];
+  return(<div style={{marginTop:14}}>
+    <div style={{...css.secLabel,marginBottom:8}}>📊 Table 1 — verify output against source</div>
+    <div style={{background:T.surface,borderRadius:14,border:BD,overflow:"hidden"}}>
+      <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+        <table style={{borderCollapse:"collapse",minWidth:490,width:"100%"}}>
+          <thead>
+            <tr>
+              <th style={{...TH,background:"#f4f8fb",borderBottom:BD,borderRight:BD,minWidth:50}}/>
+              <th colSpan={4} style={{...TH,background:"#eaf3f8",borderBottom:BD,borderRight:`2px solid #aec9d8`,color:T.dk,padding:"6px 0"}}>Not on antithrombotic</th>
+              <th colSpan={4} style={{...TH,background:"#fef4e8",borderBottom:BD,color:"#92400e",padding:"6px 0"}}>On antithrombotic</th>
+            </tr>
+            <tr>
+              <th style={{...TH,background:"#f4f8fb",borderBottom:`2px solid ${T.border}`,borderRight:BD}}/>
+              {SZ.map((s,i)=>(
+                <th key={i} style={{...TH,background:"#eaf3f8",borderBottom:`2px solid ${T.border}`,borderRight:i===3?`2px solid #aec9d8`:BD,color:T.dk}}>
+                  {s}<br/><span style={{color:T.primary,fontWeight:800}}>{["10","15","25","45"][i]} AE</span>
+                </th>))}
+              {SZ.map((s,i)=>(
+                <th key={i+4} style={{...TH,background:"#fef4e8",borderBottom:`2px solid ${T.border}`,borderRight:i<3?BD:undefined,color:"#92400e"}}>
+                  {s}<br/><span style={{fontWeight:800}}>{["30","45","75","135"][i]} AE</span>
+                </th>))}
+            </tr>
+          </thead>
+          <tbody>
+            {ROWS.map((row,ri)=>(
+              <tr key={ri}>
+                <td style={{padding:"5px 8px",fontWeight:700,fontSize:10.5,color:T.text,borderRight:BD,borderBottom:ri<4?BD:undefined,background:T.surface,whiteSpace:"nowrap"}}>{row.lbl}</td>
+                {row.c.map((c,ci)=>(
+                  <td key={ci} style={{textAlign:"center",padding:"5px 3px",fontWeight:700,fontSize:10,background:bg(RN[ri][ci]),color:"#fff",borderRight:ci===3?`2px solid rgba(255,255,255,.35)`:undefined,borderBottom:ri<4?`1px solid rgba(255,255,255,.2)`:undefined}}>{c}</td>))}
+                {row.c.map((c,ci)=>(
+                  <td key={ci+4} style={{textAlign:"center",padding:"5px 3px",fontWeight:700,fontSize:10,background:bg(RA[ri][ci]),color:"#fff",borderRight:ci<3?`1px solid rgba(255,255,255,.2)`:undefined,borderBottom:ri<4?`1px solid rgba(255,255,255,.2)`:undefined}}>{c}</td>))}
+              </tr>))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{padding:"9px 12px",borderTop:BD,display:"flex",gap:12,flexWrap:"wrap"}}>
+        {[["#22a34a","Favour resection"],["#d97706","Marginal"],["#dc2626","Favour conservative"]].map(([c,l])=>(
+          <div key={l} style={{display:"flex",alignItems:"center",gap:5,fontSize:10.5,color:T.mid}}>
+            <span style={{width:10,height:10,background:c,borderRadius:2,flexShrink:0,display:"inline-block"}}/>{l}
+          </div>))}
+      </div>
+      <div style={{padding:"5px 12px 8px",fontSize:10,color:T.muted,lineHeight:1.55,borderTop:BD}}>
+        C@y = cancers per 1000 patients at estimated mean life expectancy. AE = adverse events per 1000 patients. Modelled estimates — use for discussion only, not as definitive thresholds. Rutter MD et al. <em>Gut</em> 2025 doi:10.1136/gutjnl-2025-335047
+      </div>
+      <div style={{padding:"8px 12px 12px"}}>
+        <a href="https://www.bsg.org.uk/getmedia/8231895c-65ff-437a-8f1f-8480e798f82a/Polyps-Limited-Life-Expectancy-gutjnl-2025-335047.pdf" target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,padding:"9px 16px",background:T.dk,color:"#fff",borderRadius:9,fontSize:12.5,fontWeight:600,textDecoration:"none"}}>
+          📥 Full guidance PDF — BSG/ACPGBI Gut 2025
+        </a>
+      </div>
+    </div>
+  </div>);}
+
+function SurveillanceTab(){
+  const[age,setAge]=useState(55);const[isSurv,setIsSurv]=useState(null);const[np,setNp]=useState(0);const[adv,setAdv]=useState(null);const[unc,setUnc]=useState(null);const[p1019,setP1019]=useState(null);const[done,setDone]=useState(false);
+  const ref=useRef(null);
+  const advDone=adv!==null&&(adv==="none"||adv.length>0);
+  const canCalc=isSurv!==null&&(np===0||advDone);
+  const hasAdv=Array.isArray(adv)&&adv.length>0;
+  const highRisk=np>=5||(np>=2&&hasAdv);
+  const needsSC=unc&&(p1019||(Array.isArray(adv)&&(adv.includes("hgd")||adv.includes("sdys"))));
+  const tooOld=age>=75,isYoung=age<40;
+  const go=()=>{setDone(true);setTimeout(()=>ref.current&&ref.current.scrollIntoView({behavior:"smooth",block:"nearest"}),80)};
+  const rst=()=>{setIsSurv(null);setNp(0);setAdv(null);setUnc(null);setP1019(null);setDone(false)};
+  return(<div>
+    <div style={css.secLabel}>Post-polypectomy surveillance — BSG/ACPGBI/PHE 2020</div>
+    <div style={css.card}><AgeSel val={age} set={v=>{setAge(v);setDone(false)}}/><div style={css.divider}/><YN q="Is this a surveillance colonoscopy (rather than a first/index procedure)?" val={isSurv} set={v=>{setIsSurv(v);setDone(false)}}/></div>
+    <div style={css.card}>
+      <div style={css.secLabel}>Polyp findings</div>
+      <Ctr label={<span>Total premalignant polyps <InfoBtn tip="Adenomas + significant serrated polyps (SSLs ≥10mm or with dysplasia, TSAs). Exclude small (<10mm) rectosigmoid hyperplastic polyps."/></span>} hint="Exclude small rectosigmoid hyperplastic polyps." val={np} set={v=>{setNp(v);if(v===0)setAdv(null);setDone(false)}}/>
+      {np>0&&<><div style={css.divider}/><AdvPoly val={adv} set={v=>{setAdv(v);setDone(false)}}/></>}
+    </div>
+    {np>0&&advDone&&<div style={css.card}>
+      <div style={css.secLabel}>Excision completeness</div>
+      <YN q={<span>Histological completeness uncertain for any non-pedunculated polyp? <InfoBtn tip="Relevant for non-pedunculated polyps 10–19mm, adenomas with HGD, or serrated polyps with any dysplasia where margin status is unclear."/></span>} val={unc} set={v=>{setUnc(v);setP1019(null);setDone(false)}}/>
+      {unc&&<YN q="Non-pedunculated polyp 10–19mm with uncertain margins?" val={p1019} set={v=>{setP1019(v);setDone(false)}}/>}
+    </div>}
+    <CalcBtn onClick={go} disabled={!canCalc}/>
+    <div ref={ref}>{done&&(<>
+      {highRisk&&!tooOld&&<Res color={T.red} bg={T.redBg} icon="🔴" title="High risk — surveillance in 3 years" body={np>=5?`${np} premalignant polyps identified (≥5). High-risk criteria met.`:"≥2 premalignant polyps including ≥1 advanced polyp. High-risk criteria met."} notes={[`Target age at next surveillance: ${age+3} yrs`,"Re-apply high-risk criteria at each subsequent procedure."]} recs={["BSG Rec 1","Rec 4",...(isSurv?["Rec 12","Rec 13"]:[])]}/>}
+      {!highRisk&&!tooOld&&!isSurv&&isYoung&&np>=1&&<Res color={T.amber} bg={T.amberBg} icon="🟡" title="Low risk — consider 5–10 year surveillance" body="No high-risk criteria met. Patient is under 40. Consider 5–10 year surveillance, individualised to age and risk factors." recs={["BSG Rec 6","Rec 7"]}/>}
+      {!highRisk&&!tooOld&&(isSurv||!isYoung||np===0)&&<Res color={T.green} bg={T.greenBg} icon="✅" title={isSurv?"Cease surveillance — return to NHS BCS":"No surveillance required"} body={isSurv?"No high-risk criteria met. Surveillance should cease. Encourage NHS BCS participation (ages 50–74 England).":np===0?"No premalignant polyps found. No surveillance required. Encourage NHS BCS participation.":"No high-risk criteria met. No surveillance required. Encourage NHS BCS participation (ages 50–74 England)."} recs={isSurv?["BSG Rec 12","Rec 14"]:["BSG Rec 6"]}/>}
+      {tooOld&&<Res color={T.amber} bg={T.amberBg} icon="⚠️" title={`Age ${age} — individualised decision required`} body={`Surveillance generally not offered at ≥75 unless life expectancy >10 years. ${highRisk?"High-risk criteria met — ":""}Discuss risks and benefits. For patients with significant comorbidity see LLE 2025 tab.`} recs={["BSG Rec 5"]}/>}
+      {needsSC&&<Res color={T.blue} bg={T.blueBg} icon="🔍" title="Site check colonoscopy at 2–6 months" body="Uncertain excision completeness. Site check within 2–6 months. Subsequent surveillance determined by high-risk criteria at that point." recs={["BSG Rec 2"]}/>}
+      <ResetBtn onClick={rst}/>
+    </>)}</div>
+    {REF_BSG2020}
+    <p style={css.disc}>Clinical decision support only, not for patient use.</p>
+  </div>);}
+
+function PostCRCTab(){
+  const[res,setRes]=useState(null);const[cl,setCl]=useState(null);const[done,setDone]=useState(false);
+  const ref=useRef(null);
+  const rst=()=>{setRes(null);setCl(null);setDone(false)};
+  const go=()=>{setDone(true);setTimeout(()=>ref.current&&ref.current.scrollIntoView({behavior:"smooth",block:"nearest"}),80)};
+  return(<div>
+    <div style={css.secLabel}>Post-CRC resection surveillance</div>
+    <div style={css.card}><YN q="Curative-intent (R0) CRC resection performed?" val={res} set={v=>{setRes(v);setCl(null);setDone(false)}}/>{res&&<YN q="Clearance colonoscopy performed within 1 year of diagnosis?" hint="High-quality complete examination of the entire colon, post-operatively." val={cl} set={v=>{setCl(v);setDone(false)}}/>}</div>
+    <CalcBtn onClick={go} disabled={res===null||(res&&cl===null)}/>
+    <div ref={ref}>{done&&(<>
+      {!res&&<Res color={T.mid} bg="#f8fafc" icon="ℹ️" title="Not applicable" body="Pathway applies following potentially curative CRC resection." recs={[]}/>}
+      {res&&cl===false&&<Res color={T.red} bg={T.redBg} icon="🔴" title="Clearance colonoscopy required" body="Perform clearance colonoscopy within 1 year of CRC diagnosis. Must be a complete, high-quality examination of the entire colon." recs={["BSG Rec 8"]}/>}
+      {res&&cl===true&&<Res color={T.amber} bg={T.amberBg} icon="🟡" title="3-year surveillance colonoscopy" body="Clearance colonoscopy completed. Surveillance at 3 years from clearance. Further intervals by post-polypectomy high-risk criteria at each procedure." notes={["High-risk at surveillance → 3 years","No high-risk at surveillance → cease, return to NHS BCS"]} recs={["BSG Rec 9"]}/>}
+      <ResetBtn onClick={rst}/>
+    </>)}</div>
+    {REF_BSG2020}
+    <p style={css.disc}>Clinical decision support only, not for patient use.</p>
+  </div>);}
+
+function LNCPCTab(){
+  const[sz,setSz]=useState(null);const[mt,setMt]=useState(null);const[r0,setR0]=useState(null);const[done,setDone]=useState(false);
+  const ref=useRef(null);
+  const rst=()=>{setSz(null);setMt(null);setR0(null);setDone(false)};
+  const go=()=>{setDone(true);setTimeout(()=>ref.current&&ref.current.scrollIntoView({behavior:"smooth",block:"nearest"}),80)};
+  return(<div>
+    <div style={css.secLabel}>Large non-pedunculated colorectal polyp (LNPCP)</div>
+    <div style={css.card}>
+      <div style={{...css.q,marginBottom:9}}>Polyp size</div>
+      <div style={{display:"flex",gap:8,marginBottom:13}}>{[["10–19mm","s"],["≥20mm","l"]].map(([lb,v])=>(<button key={v} onClick={()=>{setSz(sz===v?null:v);setMt(null);setR0(null);setDone(false)}} style={{flex:1,minHeight:48,padding:"10px 0",borderRadius:10,border:`1.5px solid ${sz===v?T.primary:T.border}`,background:sz===v?T.primary:T.surface,color:sz===v?"#fff":T.mid,fontSize:15,fontWeight:600}}>{lb}</button>))}</div>
+      {sz&&(<><div style={{...css.q,marginBottom:9}}>Resection method</div><div style={{display:"flex",gap:8,marginBottom:13}}>{[["En bloc EMR/ESD","en"],["Piecemeal EMR/ESD","pm"]].map(([lb,v])=>(<button key={v} onClick={()=>{setMt(mt===v?null:v);setR0(null);setDone(false)}} style={{flex:1,minHeight:48,padding:"10px 6px",borderRadius:10,border:`1.5px solid ${mt===v?T.primary:T.border}`,background:mt===v?T.primary:T.surface,color:mt===v?"#fff":T.mid,fontSize:13,fontWeight:600,lineHeight:1.3}}>{lb}</button>))}</div></>)}
+      {sz&&mt==="en"&&<YN q="Pathologically confirmed R0 resection (en bloc, clear histological margins)?" val={r0} set={v=>{setR0(v);setDone(false)}}/>}
+    </div>
+    <CalcBtn onClick={go} disabled={!sz||!mt||(mt==="en"&&r0===null)}/>
+    <div ref={ref}>{done&&(<>
+      {sz==="s"&&<Res color={T.amber} bg={T.amberBg} icon="🔍" title="Consider site check if excision uncertain" body="For non-pedunculated polyps 10–19mm: if completeness uncertain, site check within 2–6 months. Subsequent surveillance by post-polypectomy high-risk criteria." recs={["BSG Rec 2"]}/>}
+      {sz==="l"&&mt==="en"&&r0&&<Res color={T.green} bg={T.greenBg} icon="✅" title="No site check — 3-year surveillance" body="Pathologically confirmed en bloc R0 resection. Low recurrence risk. No routine site check. Proceed to 3-year surveillance; further intervals by high-risk criteria." recs={["BSG Rec 10"]}/>}
+      {sz==="l"&&mt==="en"&&r0===false&&<Res color={T.amber} bg={T.amberBg} icon="⚠️" title="R0 not confirmed — manage as piecemeal" body="En bloc R0 not confirmed. Manage as piecemeal resection." notes={["1st site check: 2–6 months","2nd site check: 18 months","Then: 3-year surveillance"]} recs={["BSG Rec 11"]}/>}
+      {sz==="l"&&mt==="pm"&&<Res color={T.red} bg={T.redBg} icon="🔴" title="Site check at 2–6 months AND 18 months" body="Piecemeal EMR/ESD of LNPCP ≥20mm. Two site checks mandatory before 3-year surveillance." notes={["1st site check: 2–6 months","2nd site check: 18 months","Then: 3-year surveillance","Further intervals: high-risk criteria at each procedure"]} recs={["BSG Rec 11"]}/>}
+      <ResetBtn onClick={rst}/>
+    </>)}</div>
+    {REF_BSG2020}
+    <p style={css.disc}>Clinical decision support only, not for patient use.</p>
+  </div>);}
+
+function StoppingTab(){
+  const[age,setAge]=useState(70);const[hr,setHr]=useState(null);const[done,setDone]=useState(false);
+  const ref=useRef(null);
+  const rst=()=>{setAge(70);setHr(null);setDone(false)};
+  const go=()=>{setDone(true);setTimeout(()=>ref.current&&ref.current.scrollIntoView({behavior:"smooth",block:"nearest"}),80)};
+  return(<div>
+    <div style={css.secLabel}>When to stop surveillance — BSG 2020</div>
+    <div style={css.card}>
+      <AgeSel val={age} set={v=>{setAge(v);setDone(false)}}/>
+      <div style={css.divider}/>
+      <YN q={<span>High-risk findings at this colonoscopy? <InfoBtn tip="High risk = ≥5 premalignant polyps, OR ≥2 premalignant polyps including at least one advanced polyp (adenoma ≥10mm or with HGD, OR serrated polyp ≥10mm or with any dysplasia)."/></span>} val={hr} set={v=>{setHr(v);setDone(false)}}/>
+    </div>
+    <CalcBtn onClick={go} disabled={hr===null}/>
+    <div ref={ref}>{done&&(<>
+      {age<75&&hr&&<Res color={T.red} bg={T.redBg} icon="🔴" title="Continue — 3-year surveillance" body="High-risk findings present. Continue surveillance at 3 years." notes={[`Target age at next surveillance: ${age+3} yrs`,"Reassess by same criteria at each subsequent procedure."]} recs={["BSG Rec 12","Rec 13"]}/>}
+      {age<75&&!hr&&<Res color={T.green} bg={T.greenBg} icon="✅" title="Cease — return to NHS BCS" body="No high-risk findings. Surveillance should cease. Encourage NHS BCS participation (ages 50–74 England)." recs={["BSG Rec 12","Rec 14"]}/>}
+      {age>=75&&hr&&<Res color={T.amber} bg={T.amberBg} icon="⚠️" title={`Age ${age}, high-risk — individualised decision`} body="High-risk criteria met. Age ≥75. Surveillance appropriate only if life expectancy >10 years. Discuss risks, benefits and patient preference. For significant comorbidity, also see the LLE 2025 tab." recs={["BSG Rec 5","Rec 13"]}/>}
+      {age>=75&&!hr&&<Res color={T.green} bg={T.greenBg} icon="✅" title="Cease surveillance" body="No high-risk findings and age ≥75. Cease. NHS BCS invites up to age 74 in England." recs={["BSG Rec 5","Rec 14"]}/>}
+      <ResetBtn onClick={rst}/>
+    </>)}</div>
+    {REF_BSG2020}
+    <p style={css.disc}>For patients with significant comorbidity (CCI ≥3) see the LLE 2025 tab · Clinical decision support only.</p>
+  </div>);}
+
+function LLETab(){
+  const[cciSel,setCciSel]=useState([]);const[sz,setSz]=useState(null);const[anti,setAnti]=useState(null);const[done,setDone]=useState(false);
+  const ref=useRef(null);
+  const cciScore=ALL_CCI.filter(i=>cciSel.includes(i.id)).reduce((s,i)=>s+i.score,0);
+  const cciBucket=getCCIBucket(cciScore);
+  const canCalc=sz!==null&&anti!==null;
+  const go=()=>{setDone(true);setTimeout(()=>ref.current&&ref.current.scrollIntoView({behavior:"smooth",block:"nearest"}),80)};
+  const rst=()=>{setCciSel([]);setSz(null);setAnti(null);setDone(false)};
+  return(<div>
+    <div style={css.secLabel}>Polyp management — limited life expectancy</div>
+    <div style={{...css.card,background:"#fef9ec",border:`1px solid #f59e0b60`}}>
+      <div style={{fontSize:13,color:T.text,lineHeight:1.65}}>For patients with likely life expectancy &lt;10 years (<strong>CCI ≥3</strong>). Compares polypectomy complication risk against risk of symptomatic cancer from conservative management. <em>BSG/ACPGBI Gut 2025.</em></div>
+    </div>
+    <div style={css.card}>
+      <div style={css.secLabel}>Comorbidity</div>
+      <CCISelector val={cciSel} set={v=>{setCciSel(v);setDone(false)}}/>
+      {cciScore>0&&cciScore<3&&<div style={{marginTop:10,padding:"9px 12px",background:T.blueBg,borderRadius:9,fontSize:12.5,color:T.blue,borderLeft:`3px solid ${T.blue}`,lineHeight:1.5}}>CCI {cciScore} — life expectancy likely &gt;10 years. This guidance applies to CCI ≥3. Standard polypectomy decision-making applies.</div>}
+    </div>
+    <div style={css.card}>
+      <div style={css.secLabel}>Polyp</div>
+      <div style={{...css.q,marginBottom:9}}>Polyp size <InfoBtn tip="Use largest neoplastic dimension on histopathology, or endoscopic estimate if resected piecemeal."/></div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+        {SZ_OPTS.map((lb,i)=>(<button key={i} onClick={()=>{setSz(sz===i?null:i);setDone(false)}} style={{minHeight:52,padding:"8px 6px",border:`1.5px solid ${sz===i?T.primary:T.border}`,borderRadius:10,background:sz===i?T.primary:T.surface,color:sz===i?"#fff":T.mid,fontSize:14,fontWeight:600}}>{lb}</button>))}
+      </div>
+      <YN q={<span>On antithrombotic medication? <InfoBtn tip="Anticoagulants (warfarin, DOACs) and antiplatelet agents (aspirin, clopidogrel). Approximately 3× higher adverse event rate in the BSG 2025 model."/></span>} val={anti} set={v=>{setAnti(v);setDone(false)}}/>
+    </div>
+    <CalcBtn onClick={go} disabled={!canCalc}/>
+    <div ref={ref}>{done&&(<>
+      {cciBucket===null&&<Res color={T.blue} bg={T.blueBg} icon="ℹ️" title="CCI <3 — standard practice applies" body="CCI score indicates life expectancy likely >10 years. This guidance is specifically for patients with CCI ≥3. Apply standard polypectomy decision-making and post-polypectomy surveillance (see BSG Surv tab)." recs={["BSG/ACPGBI Gut 2025"]}/>}
+      {cciBucket!==null&&<LLEResult cciBucket={cciBucket} sz={sz} anti={anti}/>}
+      <ResetBtn onClick={rst}/>
+    </>)}</div>
+    <LLETable1/>
+    <p style={css.disc}>Clinical decision support only, not for patient use.</p>
+  </div>);}
+
+function AboutTab(){
+  const[open,setOpen]=useState(false);
+  const RECS=[["1","High-risk criteria: ≥2 premalignant polyps including ≥1 advanced polyp, OR ≥5 premalignant polyps."],["2","Site check at 2–6 months for non-pedunculated polyps 10–19mm, adenoma with HGD, or serrated with dysplasia where excision completeness is uncertain."],["4","High-risk, aged <75: surveillance at 3 years."],["5","Surveillance only if life expectancy >10 years; generally not at ≥75."],["6","No high-risk: no surveillance. Encourage NHS BCS."],["7","Low-risk >10 years younger than NHS BCS lower age limit: consider 5–10 year surveillance."],["8","Post-CRC: clearance colonoscopy within 1 year of diagnosis."],["9","Post-clearance: 3-year surveillance; further by high-risk criteria."],["10","En bloc R0 EMR/ESD of LNPCP: no site check; 3-year surveillance."],["11","Piecemeal EMR/ESD LNPCP ≥20mm: site checks at 2–6 months and 18 months; then 3-year."],["12","Same high-risk criteria at each surveillance procedure."],["13","High-risk at surveillance: 3-year interval."],["14","No high-risk at surveillance: cease; return to NHS BCS."]];
+  return(<div>
+    <div style={css.secLabel}>About</div>
+    <div style={css.card}><div style={{fontWeight:700,fontSize:15,color:T.primary,marginBottom:6}}>BSG Polyp Surveillance</div><p style={{fontSize:13.5,color:T.text,lineHeight:1.65,margin:0}}>Implements BSG/ACPGBI/PHE 2020 post-polypectomy surveillance guidelines and BSG/ACPGBI 2025 guidance on colorectal polyp management in patients with limited life expectancy. For UK healthcare professionals.</p></div>
+    <div style={css.card}>
+      <div style={{fontWeight:700,fontSize:13,color:T.primary,marginBottom:7}}>📖 Sources</div>
+      <p style={{fontSize:13,color:T.text,lineHeight:1.65,margin:"0 0 10px"}}>Rutter MD, East J, Rees CJ, et al. BSG/ACPGBI/PHE post-polypectomy surveillance guidelines. <em>Gut</em> 2020;69:201–223.</p>
+      <p style={{fontSize:13,color:T.text,lineHeight:1.65,margin:0}}>Rutter MD, Ranjan R, Westwood C, et al. BSG/ACPGBI guidance on colorectal polyps in limited life expectancy. <em>Gut</em> 2025. doi:10.1136/gutjnl-2025-335047</p>
+    </div>
+    <div style={{...css.card,background:"#fffbeb",borderColor:"#fcd34d"}}><div style={{fontWeight:700,fontSize:13,color:T.amber,marginBottom:6}}>⚠️ Disclaimer</div><p style={{fontSize:13,color:T.text,lineHeight:1.65,margin:0}}>Clinical decision support only. All outputs require individual clinical judgement and shared decision-making. Not for patient use.</p></div>
+    <div style={css.card}>
+      <div style={{fontWeight:700,fontSize:13,color:T.primary,marginBottom:8}}>📋 BSG 2020 high-risk criteria</div>
+      <div style={{fontSize:13.5,color:T.text,lineHeight:1.8}}><strong>High risk</strong> = either:<br/>— ≥2 premalignant polyps <em>including</em> ≥1 advanced polyp<br/>— ≥5 premalignant polyps<br/><br/><strong>Advanced polyp</strong> = adenoma ≥10mm or with HGD, OR serrated polyp ≥10mm or with any dysplasia</div>
+    </div>
+    <div style={css.card}>
+      <button onClick={()=>setOpen(o=>!o)} style={{width:"100%",background:"none",border:"none",display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:13,fontWeight:700,color:T.primary,padding:0,minHeight:44}}>
+        <span>📄 BSG 2020 recommendations</span><span style={{fontSize:16}}>{open?"▲":"▼"}</span>
+      </button>
+      {open&&<div style={{marginTop:12}}>{RECS.map(([r,text])=>(<div key={r} style={{display:"flex",gap:10,marginBottom:10,paddingBottom:10,borderBottom:`1px solid ${T.border}`}}><div style={{minWidth:44,padding:"3px 6px",background:T.lt,borderRadius:6,fontSize:10.5,fontWeight:700,color:T.primary,textAlign:"center",height:"fit-content",whiteSpace:"nowrap"}}>Rec {r}</div><div style={{fontSize:13,color:T.text,lineHeight:1.55}}>{text}</div></div>))}</div>}
+    </div>
+    {REF_BSG2020}
+    {REF_BSG2025}
+  </div>);}
+
+function App(){
+  const[tab,setTab]=useState("surv");
+  const tabs=[{id:"surv",label:"BSG Surv",icon:"🔬"},{id:"crc",label:"Post-CRC",icon:"🏥"},{id:"lnp",label:"LNPCP",icon:"📐"},{id:"stp",label:"Stopping",icon:"🛑"},{id:"lle",label:"LLE 2025",icon:"⚕️"},{id:"abt",label:"About",icon:"ℹ️"}];
+  return(<div style={css.app}>
+    <GlobalStyle/>
+    <div style={css.stickyNav}>
+      <div style={css.header}>
+        <div style={{fontSize:17,fontWeight:700,color:"#fff",letterSpacing:-.3}}>BSG Polyp Surveillance</div>
+        <div style={{fontSize:11,color:"rgba(255,255,255,.6)",marginTop:3}}>BSG/ACPGBI/PHE 2020 · BSG/ACPGBI 2025</div>
+      </div>
+      <div style={css.tabBar}>{tabs.map(t=><TabBtn key={t.id} {...t} active={tab===t.id} onClick={setTab}/>)}</div>
+    </div>
+    <div style={css.content}>
+      {tab==="surv"&&<SurveillanceTab/>}
+      {tab==="crc"&&<PostCRCTab/>}
+      {tab==="lnp"&&<LNCPCTab/>}
+      {tab==="stp"&&<StoppingTab/>}
+      {tab==="lle"&&<LLETab/>}
+      {tab==="abt"&&<AboutTab/>}
+    </div>
+  </div>);}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
