@@ -169,7 +169,7 @@ function Ctr({label,val,set,hint}){
       <button onClick={()=>set(Math.max(0,val-1))} style={{width:48,height:48,flexShrink:0,border:`1.5px solid ${T.border}`,borderRadius:10,background:T.surface,fontSize:24,fontWeight:700,color:val>0?T.primary:T.muted}}>−</button>
       <input type="text" inputMode="numeric" pattern="[0-9]*" value={val} maxLength={2}
         onChange={e=>{const n=parseInt(e.target.value);if(!isNaN(n)&&n>=0&&n<=20)set(n);else if(e.target.value==="")set(0)}}
-        style={{flex:1,textAlign:"center",padding:"8px 0",border:`1.5px solid ${T.border}`,borderRadius:10,fontSize:28,fontWeight:800,color:T.primary,outline:"none",background:T.surface}}/>
+        style={{flex:1,minWidth:0,textAlign:"center",padding:"8px 0",border:`1.5px solid ${T.border}`,borderRadius:10,fontSize:28,fontWeight:800,color:T.primary,outline:"none",background:T.surface}}/>
       <button onClick={()=>set(Math.min(20,val+1))} style={{width:48,height:48,flexShrink:0,border:`1.5px solid ${T.border}`,borderRadius:10,background:T.surface,fontSize:24,fontWeight:700,color:val<20?T.primary:T.muted}}>+</button>
     </div>
   </div>);}
@@ -182,11 +182,11 @@ function AdvPoly({val,set}){
     <div style={{fontSize:12.5,fontWeight:600,color:T.mid,marginBottom:10}}>Advanced polyp features? <em style={{fontWeight:400}}>Select all that apply</em></div>
     <div style={{display:"grid",gap:7}}>
       {ADV.map(({id,label})=>{const ch=ids.includes(id);return(
-        <button key={id} onClick={()=>!isNone&&toggle(id)} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 13px",minHeight:48,border:`1.5px solid ${ch?T.primary:T.border}`,borderRadius:10,background:ch?T.lt:T.surface,opacity:isNone?.3:1,textAlign:"left",width:"100%"}}>
+        <button key={id} onClick={()=>toggle(id)} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 13px",minHeight:48,border:`1.5px solid ${ch?T.primary:T.border}`,borderRadius:10,background:ch?T.lt:T.surface,textAlign:"left",width:"100%"}}>
           <span style={{display:"flex",width:20,height:20,flexShrink:0,border:`1.5px solid ${ch?T.primary:"#b0c4d0"}`,borderRadius:5,background:ch?T.primary:T.surface,alignItems:"center",justifyContent:"center"}}>{ch&&<span style={{color:"#fff",fontSize:12,fontWeight:700}}>✓</span>}</span>
           <span style={{fontSize:14,color:T.text}}>{label}</span>
         </button>);})}
-      <button onClick={()=>set("none")} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 13px",minHeight:48,border:`1.5px solid ${isNone?T.primary:T.border}`,borderRadius:10,background:isNone?T.lt:T.surface,textAlign:"left",width:"100%",marginTop:2}}>
+      <button onClick={()=>set(isNone?null:"none")} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 13px",minHeight:48,border:`1.5px solid ${isNone?T.primary:T.border}`,borderRadius:10,background:isNone?T.lt:T.surface,textAlign:"left",width:"100%",marginTop:2}}>
         <span style={{display:"flex",width:20,height:20,flexShrink:0,border:`1.5px solid ${isNone?T.primary:"#b0c4d0"}`,borderRadius:5,background:isNone?T.primary:T.surface,alignItems:"center",justifyContent:"center"}}>{isNone&&<span style={{color:"#fff",fontSize:12,fontWeight:700}}>✓</span>}</span>
         <span style={{fontSize:14,fontWeight:600,color:T.text}}>None of the above</span>
       </button>
