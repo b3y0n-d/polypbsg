@@ -55,9 +55,9 @@ function GuidelineRef({imgSrc,imgAlt,title,subtitle,links}){
       <div style={{...css.secLabel,marginBottom:8}}>📄 Cross-check source guideline</div>
       <div style={{background:T.surface,borderRadius:14,border:`1px solid ${T.border}`,overflow:"hidden"}}>
         {imgSrc&&!imgErr?(
-          <a href={primaryUrl} target="_blank" rel="noopener noreferrer" style={{display:"block"}}>
+          <a href={imgSrc} target="_blank" rel="noopener noreferrer" title="Tap to open full size" style={{display:"block"}}>
             <img src={imgSrc} alt={imgAlt} onError={()=>setImgErr(true)}
-              style={{width:"100%",display:"block",maxHeight:260,objectFit:"contain",objectPosition:"top",background:"#f4f8fb",borderBottom:`1px solid ${T.border}`}}/>
+              style={{width:"100%",display:"block",objectFit:"contain",objectPosition:"top",background:"#f4f8fb",borderBottom:`1px solid ${T.border}`,cursor:"zoom-in"}}/>
           </a>
         ):(
           <a href={primaryUrl} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:16,padding:"22px 18px",background:"linear-gradient(135deg,#f0f6fa,#e8f4f8)",borderBottom:`1px solid ${T.border}`,textDecoration:"none"}}>
